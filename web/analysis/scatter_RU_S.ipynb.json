@@ -1,0 +1,13 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df = pd.read_csv('runs/run-2025-11-10.csv')
+
+plt.figure(figsize=(6,5))
+plt.scatter(df['rNorm'], df['S'], alpha=0.6, label='R vs S')
+plt.scatter(df['U'], df['S'], alpha=0.6, label='U vs S')
+plt.xlabel('Input rate (R) / Entropy (U)')
+plt.ylabel('System Entropy S')
+plt.legend()
+plt.title('Input–System Correlation')
+plt.show()

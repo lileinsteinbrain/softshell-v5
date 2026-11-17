@@ -1,0 +1,14 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df = pd.read_csv('runs/run-2025-11-10.csv')
+
+fig, ax1 = plt.subplots(figsize=(10,5))
+ax1.plot(df['t'], df['S'], label='System Entropy S', color='tab:blue')
+ax1.set_xlabel('time (ms)')
+ax1.set_ylabel('S', color='tab:blue')
+ax2 = ax1.twinx()
+ax2.plot(df['t'], df['T'], label='Tempo T', color='tab:orange')
+ax2.set_ylabel('T (Hz)', color='tab:orange')
+plt.title('System Dynamics: S & T over time')
+plt.show()
