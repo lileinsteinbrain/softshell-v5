@@ -5,7 +5,7 @@ function lerp(a, b, t){ return a + (b - a) * t; }
 
 export class SystemState {
   constructor(){
-    // ---- 可调参数（更“温和”）----
+    // ---- Tunable parameters (gentle settings) ----
     this.S0     = 0.45;  
     this.k_in   = 0.90;  
     this.k_out  = 0.45;  
@@ -27,8 +27,8 @@ export class SystemState {
   update(dt, rNorm, U){
     this.t += dt;
 
-    // —— idle floor：无输入时给一点“内源节律” ——
-    // 条件：输入很少且熵也很低时，注入极轻微波动（0.06~0.10）
+    // -- Idle floor: add a faint inner rhythm when there is no input --
+    // Condition: when input and entropy are both very low, inject a tiny fluctuation (0.06-0.10)
     let Ueff = U;
     if (rNorm < 0.02 && U < 0.02) {
       const idle = 0.06 + 0.04 * Math.sin(0.7 * this.t + this._idleSeed);
@@ -37,19 +37,19 @@ export class SystemState {
 
     const r = clamp01(rNorm);
 
-    // —— S 动力学：dS/dt = k_in*Ueff - k_out*r - k_relax*(S - S0) ——
+    // -- S dynamics: dS/dt = k_in*Ueff - k_out*r - k_relax*(S - S0) --
     const dS = this.k_in * Ueff - this.k_out * r - this.k_relax * (this.S - this.S0);
     this.S = clamp01(this.S + dt * dS);
 
-    // —— 目标频率：S 越高（越乱），可选择更快或更慢的映射 —— 
-    // 这里保持“秩序高→更慢、平和”：target = lerp(Tmin, Tmax, 1 - S)
+    // -- Target tempo: higher S (more disorder) could map to faster or slower --
+    // Here, more order -> slower and calmer: target = lerp(Tmin, Tmax, 1 - S)
     const targetT = lerp(this.Tmin, this.Tmax, 1 - this.S);
 
-    // —— 频率惯性：按帧率尺度让跟随更稳 —— 
+    // -- Tempo inertia: scaled by frame rate for steadier following --
     this.T += this.gamma * (targetT - this.T) * dt * 60;
     this.T = clamp(this.T, this.Tmin, this.Tmax);
 
-    // —— 相位推进 —— 
+    // -- Phase advance --
     this.phase += 2 * Math.PI * this.T * dt;
     if (this.phase > Math.PI * 2) this.phase -= Math.PI * 2;
   }

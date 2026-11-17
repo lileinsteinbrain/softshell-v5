@@ -13,9 +13,9 @@ const canvas = document.getElementById('stage');
 const ctx    = canvas.getContext('2d');
 const ta     = document.getElementById('fuzzy');
 
-// Logger + 按钮
+// Logger + buttons
 const log = new Logger();
-// 若 Logger 没有 annotate，就补个简易实现
+// If Logger has no annotate(), add a minimal implementation
 if (typeof log.annotate !== 'function') {
   log._tag = 'live';
   log.annotate = (t) => { log._tag = t || 'live'; };
@@ -33,12 +33,12 @@ input.attach(ta);
 
 const sys = new SystemState();
 
-// Replay 控制器与按钮
+// Replay controller and buttons
 const replay    = new ReplayController(input, log);
 const btnReplay = document.getElementById('btn-replay');
 const btnStop   = document.getElementById('btn-stop');
 if (btnReplay) btnReplay.onclick = () => {
-  if (ta) ta.disabled = true;     // 回放时禁用手输，避免混杂
+  if (ta) ta.disabled = true;     // disable typing during replay to avoid mixing inputs
   log.annotate('replay:start');
   replay.start();
 };
@@ -48,7 +48,7 @@ if (btnStop) btnStop.onclick = () => {
   log.annotate('live');
 };
 
-// —— 一键录屏（30s）+ 同步回放 —— //
+// -- One-click screen recording (30 s) + synced replay -- //
 const btnRec     = document.getElementById('btn-record');
 const btnStopRec = document.getElementById('btn-stoprec');
 
@@ -78,13 +78,13 @@ function startRecording(seconds = 30){
     URL.revokeObjectURL(url);
   };
 
-  // 开始录制 + 开始回放 + 打标签
+  // Start recording + start replay + tag the log
   mediaRecorder.start();
   if (ta) ta.disabled = true;
   log.annotate('record:start');
   replay.start();
 
-  // 到点自动停止
+  // Stop automatically when time is up
   recTimer = setTimeout(stopRecording, seconds * 1000);
 }
 
@@ -98,23 +98,23 @@ function stopRecording(){
     console.warn('stop mediaRecorder error:', e);
   }
 
-  // 停回放，恢复手输，回到 live 标签
+  // Stop replay, re-enable typing, return to the "live" tag
   replay.stop();
   if (ta) ta.disabled = false;
   log.annotate('live');
 
-  // 顺手导出 CSV（可注释掉）
+  // Also export the CSV (can be commented out)
   if (btnDl) btnDl.click();
 }
 
 if (btnRec)     btnRec.onclick     = () => startRecording(30);
 if (btnStopRec) btnStopRec.onclick = () => stopRecording();
 
-// —— 主循环 —— //
+// -- Main loop -- //
 let last   = performance.now();
 let paused = false;
 
-// 日志节流（~100ms一行）
+// Log throttling (~one row per 100 ms)
 let accLog = 0;
 
 document.addEventListener('visibilitychange', () => {
@@ -127,7 +127,7 @@ requestAnimationFrame(tick);
 function tick(now){
   if (paused) return requestAnimationFrame(tick);
 
-  // 限制单帧 dt（防卡顿后大步跳）
+  // Cap per-frame dt (avoid large jumps after a stall)
   let dt = (now - last) / 1000;
   last = now;
   if (dt > 0.05) dt = 0.05;
@@ -161,21 +161,21 @@ function render(ctx, sys, U, rNorm){
   const { width, height } = canvas;
   ctx.clearRect(0, 0, width, height);
 
-  // 背景
+  // Background
   ctx.fillStyle = '#0b0f16';
   ctx.fillRect(0, 0, width, height);
 
-  // 底层：折叠面
+  // Bottom layer: folding surface
   if (folds) {
     folds.update(1/60, sys, { U, rNorm });
     folds.draw(ctx, canvas);
   }
-  // 叠加：干涉场
+  // Overlay: interference field
   if (waves) {
     waves.draw(ctx, canvas, sys, { U, rNorm });
   }
 
-  // 顶层：呼吸圈
+  // Top layer: breathing ring
   const cx = width * 0.5;
   const cy = height * 0.5;
   const baseR  = Math.min(width, height) * 0.28;

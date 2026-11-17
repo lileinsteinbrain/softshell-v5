@@ -1,6 +1,6 @@
 // src/replay.js
-// 简单回放控制器：按时间片注入“事件数”和“熵U”的目标值。
-// 原理：不直接改 state，而是往 InputSampler 注入“虚拟事件”和“虚拟字符”。
+// Simple replay controller: injects target "event count" and "entropy U" values over time.
+// It never edits state directly; it feeds virtual events and characters into InputSampler.
 
 export class ReplayController {
   constructor(inputSampler, logger){
@@ -11,7 +11,7 @@ export class ReplayController {
     this.phase = 0;
     this._raf = null;
 
-    // 预设3段：乱(高U/低r) → 稳(低U/中r) → 平衡(中U/中r)
+    // Three preset phases: chaotic (high U / low r) -> steady (low U / mid r) -> balanced (mid U / mid r)
     this.script = [
       { dur: 10.0, targetR: 0.15, targetU: 0.75, tag: 'replay:chaos' },
       { dur: 12.0, targetR: 0.45, targetU: 0.20, tag: 'replay:stabilize' },
@@ -38,7 +38,7 @@ export class ReplayController {
     const now = performance.now();
     const t = (now - this.t0) / 1000;
 
-    // 计算当前段
+    // Find the current phase
     let acc = 0, seg = null, idx = 0;
     for (let i = 0; i < this.script.length; i++){
       const s = this.script[i];
@@ -51,40 +51,40 @@ export class ReplayController {
     }
 
     const localT = t - acc;
-    // 轻微抖动，避免过于机械
+    // Slight jitter so it does not feel mechanical
     const jitterR = 0.03 * Math.sin(2*Math.PI*(0.3*localT));
     const jitterU = 0.05 * Math.sin(2*Math.PI*(0.2*localT + 0.37));
 
     const targetR = Math.max(0, Math.min(1, seg.targetR + jitterR)); // 0..1
     const targetU = Math.max(0, Math.min(1, seg.targetU + jitterU)); // 0..1
 
-    // —— 注入“虚拟事件”以逼近 targetR ——
-    // 你的 InputSampler 的 rNorm ≈ (最近窗口事件数 / 12)（当 windowMs=6000）
-    // 所以需要在这个时间窗内平均维持 12*targetR 个事件。
-    // 这里用一个概率在本帧“合成一次按键事件”。
+    // -- Inject virtual events to approach targetR --
+    // InputSampler's rNorm ~= (events in recent window / 12) when windowMs = 6000,
+    // so on average 12 * targetR events must be sustained within that window.
+    // Here a probability decides whether to synthesise one key event this frame.
     const windowTargetEvents = 12 * targetR;
-    // 大致换成“每秒需要多少事件”
+    // Roughly convert to "events needed per second"
     const eventsPerSec = windowTargetEvents / (this.input.windowMs / 1000);
-    // 本帧注入概率（dt≈1/60）
+    // Injection probability for this frame (dt ~= 1/60)
     const p = eventsPerSec / 60;
     if (Math.random() < p){
       this.input._pushEvent();
-      // 造一个随机字符，提升 U 的可控性
-      // 当 targetU 高时用更分散的字符集
+      // Generate a random character to make U more controllable;
+      // use a wider character set when targetU is high
       const pool = targetU > 0.5 ? 'asdfghjklqwertyuiopzxcvbnm123456' : 'aaaaaeeeee     ';
       const ch = pool[Math.floor(Math.random() * pool.length)];
       this.input._pushChar(ch);
     }
 
-    // —— 额外往熵通道加点“温和偏置”，更接近 targetU —— 
-    // 通过往 charBuf 塞字符实现（不会直接改 U EMA，保持真实路径）
-    if (Math.random() < 0.2){ // 每帧小概率
+    // -- Add a gentle bias to the entropy channel to approach targetU --
+    // Done by pushing characters into charBuf (does not touch the U EMA, keeping the real signal path)
+    if (Math.random() < 0.2){ // small chance per frame
       const pool2 = targetU > 0.6 ? 'xyzuvwbcmk012345' :
                     targetU < 0.25 ? '          aaaaa' : 'aeioubcdfg';
       this.input._pushChar(pool2[Math.floor(Math.random()*pool2.length)]);
     }
 
-    // 给 logger 一个段落标签，方便后续分析
+    // Give the logger a phase tag for later analysis
     if (this.logger && this.logger.annotate){
       this.logger.annotate(seg.tag);
     }

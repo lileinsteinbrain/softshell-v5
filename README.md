@@ -1,29 +1,40 @@
 # Softshell v5
 
-## What this is
-A browser-based iteration of the Softshell system: a soft, responsive "shell" whose internal state (entropy **S** and tempo **T**) is driven by how a person types, rather than by what they type.
+**A screen-based "living surface" that reacts to *how* you type, not *what* you type. Calm, steady typing smooths it out; fast, chaotic typing makes it ripple and fold.**
 
-## Input
-- Live keystrokes in a text field
-- Typing rhythm (rate **R**) and the Shannon entropy of the typed text (uncertainty **U**)
-- Recorded sessions can be replayed as input
-
-## Processing
-- `core/input.js` samples typing rate and normalised text entropy
-- `core/state.js` evolves entropy S and tempo T with inflow, outflow and relaxation terms, plus an idle "inner rhythm" when nobody is typing
-- Values are logged continuously for later analysis
-
-## Output
-- Real-time canvas visuals (`vis/waves.js`, `vis/folds.js`) whose motion and folding follow S and T
-- Downloadable logs and one-click 30-second screen recordings
-- Analysis plots in `web/analysis/`
-
-## Findings so far
-- High R + high U → S increases (chaotic phase)
-- Increasing R + decreasing U → S stabilises
-- Mid R/U → S steady, T converges
+Part of the **Softshell** series → see also [softshell-device](https://github.com/lileinsteinbrain/softshell-device) (physical, pressure-based version).
 
 ![System dynamics](web/analysis/System%20Dynamics-%20Entropy%20(S)%20%26%20Tempo%20(T).png)
+
+## The idea
+Softshell explores interfaces that respond to the *quality* of an interaction over time. Here the input is ordinary typing. The system reads two things, how fast you type and how random the characters are, and folds them into an internal state with its own inertia and resting rhythm. The visuals show that state: a folding surface, an interference pattern and a breathing ring.
+
+## How it works
+```
+ Typing ──► R  input rate          (keystrokes in the last 6 s)
+        └─► U  uncertainty         (Shannon entropy of recent characters)
+                    │
+   S  system entropy:  dS/dt = k_in·U − k_out·R − k_relax·(S − S0)
+   T  tempo: more order → slower and calmer
+   + a faint inner rhythm when nobody is typing
+                    │
+ Visuals: folding height field (folds.js) · wave interference (waves.js) · breathing ring
+```
+A built-in **replay** mode runs a scripted session (chaotic → steady → balanced), and every run can be logged to CSV and screen-recorded for analysis.
+
+## What I found
+- High typing rate + high randomness → entropy rises (chaotic phase)
+- Increasing rate with decreasing randomness → entropy stabilises
+- Medium on both → entropy steady, tempo converges
+
+## What's in this repo
+| Path | What it is |
+|---|---|
+| `web/` | The app (Vite + Canvas) |
+| `web/src/core/` | Input sampling, state model, logging, replay |
+| `web/src/vis/` | Visual renderers |
+| `web/analysis/` | Logged runs, plots and a recorded demo |
+| `src/` | Earlier copy of the core code |
 
 ## Run it
 ```bash
@@ -31,6 +42,3 @@ cd web
 npm install
 npm run dev
 ```
-
-## Related
-- [softshell-device](https://github.com/lileinsteinbrain/softshell-device): physical FSR + haptic version

@@ -2,7 +2,7 @@
 export class Logger {
   constructor() {
     this.rows = [];
-    // CSV 表头
+    // CSV header
     this.header = [
       't_ms','dt_ms','rNorm','U','S','T_hz','events_dt','tag'
     ];
@@ -10,7 +10,7 @@ export class Logger {
     this._t0 = performance.now();
   }
 
-  /** 追加一行 */
+  /** Append one row */
   push({ t, dt, rNorm, U, S, T, events_dt = 0, tag = '' }) {
     const line = [
       Math.round(t),                       // t_ms
@@ -19,19 +19,19 @@ export class Logger {
       U.toFixed(4),
       S.toFixed(4),
       T.toFixed(4),
-      events_dt,                           // 本帧事件数
+      events_dt,                           // number of events this frame
       tag
     ].join(',');
     this.rows.push(line);
   }
 
-  /** 清空 */
+  /** Clear */
   clear() {
-    this.rows.length = 1; // 保留表头
+    this.rows.length = 1; // keep the header row
     this._t0 = performance.now();
   }
 
-  /** 触发浏览器下载 */
+  /** Trigger a browser download */
   download(filename = `run-${new Date().toISOString().replace(/[:.]/g,'-')}.csv`) {
     const blob = new Blob([this.rows.join('\n') + '\n'], { type: 'text/csv;charset=utf-8;' });
     const url  = URL.createObjectURL(blob);

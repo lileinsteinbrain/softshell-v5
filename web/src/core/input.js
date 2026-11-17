@@ -1,6 +1,6 @@
 // src/core/input.js
 
-// —— 文本信息熵（0..1 归一化）——
+// -- Text Shannon entropy (normalised to 0..1) --
 function shannonEntropy(str) {
   if (!str || !str.length) return 0;
   const freq = new Map();
@@ -11,7 +11,7 @@ function shannonEntropy(str) {
     const p = c / n;
     H -= p * Math.log2(p);
   }
-  // 经验上 6bit 覆盖常见键入分布，截断到 [0,1]
+  // Empirically 6 bits covers typical typing distributions; clamp to [0,1]
   return Math.min(1, H / 6);
 }
 
@@ -30,10 +30,10 @@ export class InputSampler {
 
     this.ta = null;
 
-    // —— 虚拟通道（Replay 专用）——
+    // -- Virtual channel (used by Replay) --
     this._virtual = null; // { r:0..1, u:0..1 } or null
 
-    // 全局键盘事件（无论焦点在哪都能采到）
+    // Global keyboard listener (captures input regardless of focus)
     window.addEventListener('keydown', (e) => {
       this._pushEvent();
       if (e.key && e.key.length === 1) this._pushChar(e.key);
@@ -52,7 +52,7 @@ export class InputSampler {
     }
   }
 
-  // ====== 虚拟输入口（Replay 调用）======
+  // ====== Virtual input (called by Replay) ======
   setVirtual(r01, u01){
     this._virtual = { r: Math.max(0, Math.min(1, r01)), u: Math.max(0, Math.min(1, u01)) };
   }
@@ -77,7 +77,7 @@ export class InputSampler {
   }
 
   sample(){
-    // 若有虚拟输入，直接走虚拟通道（仍通过 EMA，避免突变）
+    // If virtual input is active, use it directly (still passed through EMA to avoid jumps)
     if (this._virtual){
       this._rEMA = this._rEMA + (this._virtual.r - this._rEMA) * this.alphaR;
       this._uEMA = this._uEMA + (this._virtual.u - this._uEMA) * this.alphaU;
@@ -88,17 +88,17 @@ export class InputSampler {
     const cutoff = now - this.windowMs;
     while (this.buf.length && this.buf[0] < cutoff) this.buf.shift();
 
-    // 6s 窗口内事件数 → 归一化 0..1（12 次≈满刻度）
+    // Events in a 6 s window -> normalised 0..1 (about 12 events = full scale)
     const perWindow = this.buf.length;
     const rNormRaw = Math.min(1, perWindow / 12);
 
-    // 文本熵：优先用近期字符缓存；没有则用 textarea 尾段
+    // Text entropy: prefer the recent character buffer; otherwise use the tail of the textarea
     let txt = '';
     if (this.charBuf.length) txt = this.charBuf.join('');
     else if (this.ta && this.ta.value) txt = this.ta.value.slice(-200);
     const Uraw = shannonEntropy(txt);
 
-    // EMA 平滑
+    // EMA smoothing
     this._rEMA = this._rEMA + (rNormRaw - this._rEMA) * this.alphaR;
     this._uEMA = this._uEMA + (Uraw     - this._uEMA) * this.alphaU;
 
